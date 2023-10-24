@@ -81,8 +81,37 @@ class Cleaner
   end
 
   def process_output(cached_output_row)
-    # run_validations if @validate
+    run_validations if @validate
     @output << cached_output_row.values
+  end
+
+  def run_validations(cached_output_row)
+    validate_effective_expiry_date(cached_output_row)
+    validate_member_id(cached_output_row)
+  end
+
+  def validate_effective_vs_expiry_date(cached_output_row)
+    effective_date = Date.strptime(cached_output_row['effective_date'], '%Y-%m-%d')
+    expiry_date = Date.strptime(cached_output_row['expiry_date'], '%Y-%m-%d')
+    if effective_date > expiry_date
+      result = {
+        row: cached_output_row.values,
+        failure: "The effective_date is later than the expiry_date."
+      }
+
+      @flagged_rows << result
+    end
+  end
+
+  def validate_member_id(cached_output_row)
+    if @member_ids.include?(cached_output_row['member_id'])
+      result = {
+        row: cached_output_row.values,
+        failure: "Duplicate member_id."
+      }
+
+      @flagged_rows << result
+    end
   end
 
   def set_parse_map
@@ -112,6 +141,18 @@ class Cleaner
     results_file.puts "-------------------------------------------------------------------"
     results_file.puts ""
     results_file.puts ""
+
+    results_file.puts "Number of rows flagged for validation errors: #{@flagged_rows.count}"
+    results_file.puts "Details: "
+    @flagged_rows.each do |flagged_row|
+      results_file.puts "Row: #{flagged_row[:row]}"
+      results_file.puts "Failure: #{flagged_row[:failure]}"
+      
+      results_file.puts ""
+      results_file.puts ""
+    end
+
+    results_file.puts "-------------------------------------------------------------------"
   end
 
   def parse_date(value)
