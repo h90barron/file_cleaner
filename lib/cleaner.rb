@@ -1,7 +1,7 @@
 require 'date'
 require 'csv'
 require 'set'
-
+require 'input_parser'
 
 class Cleaner
   # DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
@@ -10,10 +10,9 @@ class Cleaner
   END_RANGE = "01/01/2200".freeze
   DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y', '%m-%d-%y']
 
-
   def initialize(input_file:, output_file:)
     @input_file = input_file
-    @parse_map = set_parse_map
+    @parser = InputParser.new
     @output = initialize_output_file(output_file)
     @member_ids = Set.new
     @excluded_rows = []
@@ -29,7 +28,7 @@ class Cleaner
 
       HEADERS.each do |header|
         begin
-          cached_output_row[header] = parse(row, header)
+          cached_output_row[header] = @parser.parse(row, header)
         rescue StandardError => e
           error = {
             "column": header,
@@ -54,14 +53,6 @@ class Cleaner
 
     build_results_file
     @output.close
-  end
-
-  def parse(row, header)
-    value = row[header]
-    return if value.nil?
-    value = value.strip
-    value = send("parse_#{@parse_map[header]}", value) if @parse_map.key?(header)
-    value
   end
 
   def initialize_output_file(output_file)
@@ -113,15 +104,6 @@ class Cleaner
     end
   end
 
-  def set_parse_map
-    {
-      'dob' => 'date',
-      'effective_date' => 'date',
-      'expiry_date' => 'date',
-      'phone_number' => 'phone_number'
-    }
-  end
-
   def build_results_file
     results_file = File.open('results.txt', 'w')
     results_file.puts "Number of rows excluded from parsing errors: #{@excluded_rows.count}"
@@ -153,57 +135,4 @@ class Cleaner
 
     results_file.puts "-------------------------------------------------------------------"
   end
-
-  def parse_date(value)
-    return if value.nil?
-    date = parse_date_to_time(value)
-    date.strftime('%Y-%m-%d')
-  end
-
-  def parse_date_to_time(value)
-    date = nil
-    DATE_FORMATS.each do |date_format|
-      date = parse_date_with_formats(value, date_format)
-      if date.nil?
-        next
-      else
-        return date
-      end
-    end
-
-    raise ArgumentError.new 'Invalid date format' if date.nil?
-    date
-  end
-
-  def parse_date_with_formats(value, date_format)
-    begin
-      date = Date.strptime(value, date_format)
-    rescue ArgumentError
-      date = nil
-    end
-
-    date = verify_date(date) unless date.nil?
-    date
-  end
-
-  def verify_date(date)
-    (date > Date.strptime(START_RANGE, '%m/%d/%Y') && date < Date.strptime(END_RANGE, '%m/%d/%Y')) ? date : nil
-  end
-
-  def parse_phone_number(value)
-    ['(', ')', ' ', '-'].each do |char|
-      value.gsub!(char, '')
-    end
-
-    if value.length > 10
-      country_code = value[0...-10]
-      raise 'Invalid Country Code' unless country_code == '1'
-    elsif value.length < 10
-      raise 'Invalid Phone Number'
-    end
-
-    "+1#{value}"
-  end
 end
-
-# Cleaner.new.clean
