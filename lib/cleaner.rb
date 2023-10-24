@@ -2,6 +2,7 @@ require 'date'
 require 'csv'
 require 'set'
 
+
 class Cleaner
   # DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
   HEADERS = %w[first_name last_name dob member_id effective_date expiry_date phone_number]
@@ -10,20 +11,19 @@ class Cleaner
   DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y', '%m-%d-%y']
 
 
-  def initialize
-    # @input_file = input_file
-
+  def initialize(input_file:, output_file:)
+    @input_file = input_file
     @parse_map = set_parse_map
-    @output = initialize_output_file
+    @output = initialize_output_file(output_file)
     @member_ids = Set.new
     @excluded_rows = []
     @flagged_rows = []
   end
 
-  def clean
+  def transform
     cached_output_row = {}
 
-    CSV.foreach('input.csv', headers: true, encoding: 'bom|utf-8').with_index do |row, i|
+    CSV.foreach(@input_file, headers: true, encoding: 'bom|utf-8').with_index do |row, i|
       parsing_error = false
       row_errors = []
 
@@ -53,6 +53,7 @@ class Cleaner
     end
 
     build_results_file
+    @output.close
   end
 
   def parse(row, header)
@@ -63,8 +64,8 @@ class Cleaner
     value
   end
 
-  def initialize_output_file
-    csv = CSV.open('output.csv', 'w')
+  def initialize_output_file(output_file)
+    csv = CSV.open(output_file, 'w')
     csv << HEADERS
     csv
   end
@@ -75,8 +76,6 @@ class Cleaner
 
   def process_error(cached_output_row, row_errors)
     row_with_errors = { row: cached_output_row.values, errors: row_errors }
-    puts 'row with errors'
-    puts row_with_errors
     @excluded_rows << row_with_errors
   end
 
@@ -158,7 +157,6 @@ class Cleaner
   def parse_date(value)
     return if value.nil?
     date = parse_date_to_time(value)
-    # puts "Parsed date string: #{date}"
     date.strftime('%Y-%m-%d')
   end
 
@@ -173,6 +171,7 @@ class Cleaner
       end
     end
 
+    raise ArgumentError.new 'Invalid date format' if date.nil?
     date
   end
 
@@ -207,4 +206,4 @@ class Cleaner
   end
 end
 
-Cleaner.new.clean
+# Cleaner.new.clean

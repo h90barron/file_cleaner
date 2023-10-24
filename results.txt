@@ -1,0 +1,8 @@
+Number of rows excluded from parsing errors: 0
+Details: 
+-------------------------------------------------------------------
+
+
+Number of rows flagged for validation errors: 0
+Details: 
+-------------------------------------------------------------------
