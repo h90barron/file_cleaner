@@ -1,25 +1,24 @@
-require 'date'
 require 'csv'
 require 'set'
-require 'input_parser'
+require_relative 'input_parser'
 
 class Cleaner
-  # DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y']
   HEADERS = %w[first_name last_name dob member_id effective_date expiry_date phone_number]
   START_RANGE = "01/01/1900".freeze
   END_RANGE = "01/01/2200".freeze
   DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y', '%m-%d-%y']
 
-  def initialize(input_file:, output_file:)
+  def initialize(input_file:, output_file:, validate:)
     @input_file = input_file
-    @parser = InputParser.new
     @output = initialize_output_file(output_file)
+    @validate = validate
+    @parser = InputParser.new
     @member_ids = Set.new
     @excluded_rows = []
     @flagged_rows = []
   end
 
-  def transform
+  def clean
     cached_output_row = {}
 
     CSV.foreach(@input_file, headers: true, encoding: 'bom|utf-8').with_index do |row, i|
@@ -28,7 +27,7 @@ class Cleaner
 
       HEADERS.each do |header|
         begin
-          cached_output_row[header] = @parser.parse(row, header)
+          cached_output_row[header] = @parser.parse(row[header], header)
         rescue StandardError => e
           error = {
             "column": header,
@@ -47,12 +46,11 @@ class Cleaner
         process_output(cached_output_row)
       end
 
-      # do we need this? 
       cached_output_row.clear
     end
 
-    build_results_file
-    @output.close
+    build_report_file
+    close_output_file
   end
 
   def initialize_output_file(output_file)
@@ -61,17 +59,13 @@ class Cleaner
     csv
   end
 
-  def initialize_results_file
-    File.open('results.txt', 'w')
-  end
-
   def process_error(cached_output_row, row_errors)
     row_with_errors = { row: cached_output_row.values, errors: row_errors }
     @excluded_rows << row_with_errors
   end
 
   def process_output(cached_output_row)
-    run_validations if @validate
+    run_validations(cached_output_row) if @validate
     @output << cached_output_row.values
   end
 
@@ -80,7 +74,9 @@ class Cleaner
     validate_member_id(cached_output_row)
   end
 
-  def validate_effective_vs_expiry_date(cached_output_row)
+  def validate_effective_expiry_date(cached_output_row)
+    return unless cached_output_row['effective_date'] && cached_output_row['expiry_date']
+
     effective_date = Date.strptime(cached_output_row['effective_date'], '%Y-%m-%d')
     expiry_date = Date.strptime(cached_output_row['expiry_date'], '%Y-%m-%d')
     if effective_date > expiry_date
@@ -94,6 +90,8 @@ class Cleaner
   end
 
   def validate_member_id(cached_output_row)
+    return unless cached_output_row['member_id']
+
     if @member_ids.include?(cached_output_row['member_id'])
       result = {
         row: cached_output_row.values,
@@ -101,11 +99,13 @@ class Cleaner
       }
 
       @flagged_rows << result
+    else
+      @member_ids << cached_output_row['member_id']
     end
   end
 
-  def build_results_file
-    results_file = File.open('results.txt', 'w')
+  def build_report_file
+    results_file = File.open('report.txt', 'w')
     results_file.puts "Number of rows excluded from parsing errors: #{@excluded_rows.count}"
     results_file.puts "Details: "
     @excluded_rows.each do |excluded_row|
@@ -134,5 +134,10 @@ class Cleaner
     end
 
     results_file.puts "-------------------------------------------------------------------"
+    results_file.close
+  end
+
+  def close_output_file
+    @output.close
   end
 end
