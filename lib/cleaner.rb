@@ -13,11 +13,19 @@ class Cleaner
     phone_number
   ].freeze
 
+  REQUIRED_FIELDS = %w[
+    first_name 
+    last_name 
+    dob 
+    member_id 
+    effective_date 
+  ].freeze
+
   def initialize(input_file:, output_file:, validate:)
     @input_file = input_file
     @output = initialize_output_file(output_file)
     @validate = validate
-    
+
     @parser = InputParser.new
     @member_ids = Set.new
     @excluded_rows = []
@@ -28,6 +36,11 @@ class Cleaner
     cached_output_row = {}
 
     CSV.foreach(@input_file, headers: true, encoding: 'bom|utf-8').with_index do |row, i|
+      if missing_required_fields?(row)
+        process_row_missing_required_fields(row)
+        next
+      end
+      
       parsing_error = false
       row_errors = []
 
@@ -47,7 +60,7 @@ class Cleaner
       end
 
       if parsing_error
-        process_error(cached_output_row, row_errors)
+        process_error(cached_output_row.values, row_errors)
       else
         process_output(cached_output_row)
       end
@@ -59,24 +72,46 @@ class Cleaner
     close_output_file
   end
 
+  private
+
+  def missing_required_fields?(row)
+    REQUIRED_FIELDS.any? { |header| row[header].nil? }
+  end
+
   def initialize_output_file(output_file)
     csv = CSV.open(output_file, 'w')
     csv << HEADERS
     csv
   end
 
-  def process_error(cached_output_row, row_errors)
-    row_with_errors = { row: cached_output_row.values, errors: row_errors }
+  def process_row_missing_required_fields(row)
+    errors = []
+    REQUIRED_FIELDS.each do |header|
+      if row[header].nil?
+        error = {
+          "column": header,
+          "error": "This field is required."
+        }
+        errors << error
+      end
+    end
+
+    row_with_errors = { row: row, errors: errors }
+    @excluded_rows << row_with_errors
+  end
+
+  def process_error(error_row, errors)
+    row_with_errors = { row: error_row, errors: errors }
     @excluded_rows << row_with_errors
   end
 
   def process_output(cached_output_row)
-    run_validations(cached_output_row) if @validate
+    run_optional_validations(cached_output_row) if @validate
     @output << cached_output_row.values
   end
 
-  # TODO - move validation and report file workflow out of this class
-  def run_validations(cached_output_row)
+  # TODO - move optional validation and report file workflow out of this class
+  def run_optional_validations(cached_output_row)
     validate_effective_expiry_date(cached_output_row)
     validate_member_id(cached_output_row)
   end
