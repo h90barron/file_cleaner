@@ -2,10 +2,6 @@ require 'date_utils'
 require 'phone_number_utils'
 
 class InputParser
-  HEADERS = %w[first_name last_name dob member_id effective_date expiry_date phone_number].freeze
-  START_RANGE = "01/01/1900".freeze
-  END_RANGE = "01/01/2200".freeze
-  DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y', '%m-%d-%y'].freeze
   PARSE_TYPE_MAP = {
     'dob' => 'date',
     'effective_date' => 'date',

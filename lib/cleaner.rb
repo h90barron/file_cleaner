@@ -1,12 +1,17 @@
 require 'csv'
 require 'set'
-require_relative 'input_parser'
+require 'input_parser'
 
 class Cleaner
-  HEADERS = %w[first_name last_name dob member_id effective_date expiry_date phone_number]
-  START_RANGE = "01/01/1900".freeze
-  END_RANGE = "01/01/2200".freeze
-  DATE_FORMATS = ['%Y-%m-%d', '%y-%m-%d', '%m/%d/%y', '%m/%d/%Y', '%m-%d-%y']
+  HEADERS = %w[
+    first_name 
+    last_name 
+    dob 
+    member_id 
+    effective_date 
+    expiry_date 
+    phone_number
+  ].freeze
 
   def initialize(input_file:, output_file:, validate:)
     @input_file = input_file
