@@ -7,7 +7,7 @@ describe InputParser do
   let(:other_header) { 'first_name' }
 
   describe 'with parsable data' do
-    let(:parsable_other) { 'James '}
+    let(:parsable_other) { ' James '}
     let(:parsable_date) { '1/1/88' }
     let(:parsable_phone_number) { '(555) 555-1234' }
 
@@ -31,21 +31,20 @@ describe InputParser do
   end
 
   describe 'with unparsable data' do
-    let(:parsable_non_date_non_phone_number) { }
-    let(:parsable_date) { '111/1/88' }
+    let(:unparsable_date) { '111/1/88' }
     let(:unparsable_phone_number) { '(11555) 555-1234' }
 
     context 'of date type' do
       it 'raises an error' do
         expect { subject.parse(unparsable_date, date_header) }
-          .to raise_error
+          .to raise_error(ArgumentError)
       end
     end
 
     context 'of phone number type' do
       it 'raises an error'  do
         expect { subject.parse(unparsable_phone_number, phone_header) }
-          .to raise_error
+          .to raise_error(ArgumentError)
       end
     end
   end

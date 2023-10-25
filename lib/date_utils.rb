@@ -3,7 +3,6 @@ require 'date'
 class DateUtils
   START_RANGE = "1900-01-01".freeze
   END_RANGE = "2200-01-01".freeze
-  9/30/19
   DATE_FORMATS = [
     '%Y-%m-%d', 
     '%y-%m-%d', 
