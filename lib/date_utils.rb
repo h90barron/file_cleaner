@@ -14,13 +14,13 @@ class DateUtils
   ISO8601_FORMAT = '%Y-%m-%d'.freeze
 
   def to_iso8601(value)
-    return if value.nil?
     date = parse_string_date_to_time(value)
     date.strftime(ISO8601_FORMAT)
   end
 
   private
 
+  # TODO - refactor this
   def parse_string_date_to_time(value)
     date = nil
     DATE_FORMATS.each do |date_format|
@@ -52,6 +52,7 @@ class DateUtils
   # eg 
   # 9/30/19 with 'm/d/Y' = 0019-30-09      no error but incorrect
   # 9/30/19 with 'm/d/y' = 2019-30-09      no error and correct
+  # if date is out of range, return nil
   def verify_date(date)
     after_start_date = (date > Date.strptime(START_RANGE, ISO8601_FORMAT))
     before_end_date = (date < Date.strptime(END_RANGE, ISO8601_FORMAT))

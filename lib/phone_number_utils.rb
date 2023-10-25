@@ -6,6 +6,7 @@ class PhoneNumberUtils
       value.gsub!(char, '')
     end
 
+    # TODO - verify we want to error out for non US 'country_codes'
     if value.length > 10
       country_code = value[0...-10]
       raise ArgumentError.new('Invalid Country Code') unless country_code == '1'

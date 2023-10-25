@@ -17,6 +17,7 @@ class Cleaner
     @input_file = input_file
     @output = initialize_output_file(output_file)
     @validate = validate
+    
     @parser = InputParser.new
     @member_ids = Set.new
     @excluded_rows = []
@@ -74,6 +75,7 @@ class Cleaner
     @output << cached_output_row.values
   end
 
+  # TODO - move validation and report file workflow out of this class
   def run_validations(cached_output_row)
     validate_effective_expiry_date(cached_output_row)
     validate_member_id(cached_output_row)
